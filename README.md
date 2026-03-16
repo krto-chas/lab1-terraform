@@ -51,6 +51,9 @@ Deploy sker nu automatiskt vid merge/push till `main`:
 - `lint` -> `security` -> `validate` -> `plan` -> `apply`
 - Ingen manuell uppladdning/körning krävs vid merge.
 
+Tillfälligt läge: `plan/apply` är pausat direkt i workflow-filen (`if: false`) tills ny giltig SA-nyckel är utställd av lärare/Mission Control.
+När nyckeln är verifierad återaktiveras jobben genom att ändra `if`-villkoren i [.github/workflows/terraform.yml](.github/workflows/terraform.yml).
+
 ## Planerade resurser (enligt senaste plan)
 
 - `google_compute_instance.vm`
