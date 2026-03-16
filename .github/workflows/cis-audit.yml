@@ -18,12 +18,27 @@ jobs:
       GCP_PROJECT_ID: ${{ vars.TF_VAR_project_id }}
     steps:
       - uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Prepare GCP credentials
+        shell: bash
+        run: |
+          set -e
+          CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
+          printf '%s' '${{ secrets.GCP_SA_KEY }}' > "${CRED_PATH}"
+          python - <<'PY'
+          import json, os
+          path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
+          with open(path, 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          if 'private_key' in data and '\\n' in data['private_key']:
+              data['private_key'] = data['private_key'].replace('\\n', '\n')
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f)
+          PY
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
+      - name: Activate service account
+        run: gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
       - name: Run Lynis CIS audit on VM
         run: |
           set -e

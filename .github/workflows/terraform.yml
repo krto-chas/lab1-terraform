@@ -50,10 +50,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Prepare GCP credentials
+        shell: bash
+        run: |
+          set -e
+          CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
+          printf '%s' '${{ secrets.GCP_SA_KEY }}' > "${CRED_PATH}"
+          python - <<'PY'
+          import json, os
+          path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
+          with open(path, 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          if 'private_key' in data and '\\n' in data['private_key']:
+              data['private_key'] = data['private_key'].replace('\\n', '\n')
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f)
+          PY
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}"
       - name: Terraform Plan
@@ -72,10 +85,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Prepare GCP credentials
+        shell: bash
+        run: |
+          set -e
+          CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
+          printf '%s' '${{ secrets.GCP_SA_KEY }}' > "${CRED_PATH}"
+          python - <<'PY'
+          import json, os
+          path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
+          with open(path, 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          if 'private_key' in data and '\\n' in data['private_key']:
+              data['private_key'] = data['private_key'].replace('\\n', '\n')
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f)
+          PY
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}"
       - name: Terraform Apply
