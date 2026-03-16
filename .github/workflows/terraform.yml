@@ -50,14 +50,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-          create_credentials_file: true
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
+      - name: Prepare and activate GCP credentials
+        shell: bash
+        env:
+          RAW_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          set -e
+          CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
+          python - <<'PY'
+          import base64, json, os
+          raw = os.environ['RAW_GCP_SA_KEY'].strip()
+          if raw.startswith('{'):
+              payload = raw
+          else:
+              payload = base64.b64decode(raw).decode('utf-8')
+          data = json.loads(payload)
+          if 'private_key' in data:
+              data['private_key'] = data['private_key'].replace('\\r\\n', '\\n').replace('\\r', '\\n')
+              data['private_key'] = data['private_key'].replace('\\n', '\n')
+          path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f)
+          PY
+          gcloud auth activate-service-account --key-file="${CRED_PATH}"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Get backend access token
         shell: bash
         run: |
@@ -81,14 +99,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-          create_credentials_file: true
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
+      - name: Prepare and activate GCP credentials
+        shell: bash
+        env:
+          RAW_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          set -e
+          CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
+          python - <<'PY'
+          import base64, json, os
+          raw = os.environ['RAW_GCP_SA_KEY'].strip()
+          if raw.startswith('{'):
+              payload = raw
+          else:
+              payload = base64.b64decode(raw).decode('utf-8')
+          data = json.loads(payload)
+          if 'private_key' in data:
+              data['private_key'] = data['private_key'].replace('\\r\\n', '\\n').replace('\\r', '\\n')
+              data['private_key'] = data['private_key'].replace('\\n', '\n')
+          path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f)
+          PY
+          gcloud auth activate-service-account --key-file="${CRED_PATH}"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Get backend access token
         shell: bash
         run: |
