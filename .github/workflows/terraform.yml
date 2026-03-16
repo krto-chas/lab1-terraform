@@ -52,23 +52,30 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
       - name: Prepare GCP credentials
         shell: bash
+        env:
+          RAW_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           set -e
           CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
-          printf '%s' '${{ secrets.GCP_SA_KEY }}' > "${CRED_PATH}"
           python - <<'PY'
-          import json, os
+          import base64, json, os
           path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
-          with open(path, 'r', encoding='utf-8') as f:
-              data = json.load(f)
+          raw = os.environ['RAW_GCP_SA_KEY'].strip()
+          if raw.startswith('{'):
+            payload = raw
+          else:
+            payload = base64.b64decode(raw).decode('utf-8')
+          data = json.loads(payload)
           if 'private_key' in data and '\\n' in data['private_key']:
               data['private_key'] = data['private_key'].replace('\\n', '\n')
+          if 'private_key' in data:
+            data['private_key'] = data['private_key'].replace('\r\n', '\n').replace('\r', '\n')
           with open(path, 'w', encoding='utf-8') as f:
               json.dump(data, f)
           PY
           echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Terraform Init
-        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}"
+        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=${GOOGLE_APPLICATION_CREDENTIALS}"
       - name: Terraform Plan
         run: terraform plan -input=false -no-color
 
@@ -87,22 +94,29 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
       - name: Prepare GCP credentials
         shell: bash
+        env:
+          RAW_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           set -e
           CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
-          printf '%s' '${{ secrets.GCP_SA_KEY }}' > "${CRED_PATH}"
           python - <<'PY'
-          import json, os
+          import base64, json, os
           path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
-          with open(path, 'r', encoding='utf-8') as f:
-              data = json.load(f)
+          raw = os.environ['RAW_GCP_SA_KEY'].strip()
+          if raw.startswith('{'):
+            payload = raw
+          else:
+            payload = base64.b64decode(raw).decode('utf-8')
+          data = json.loads(payload)
           if 'private_key' in data and '\\n' in data['private_key']:
               data['private_key'] = data['private_key'].replace('\\n', '\n')
+          if 'private_key' in data:
+            data['private_key'] = data['private_key'].replace('\r\n', '\n').replace('\r', '\n')
           with open(path, 'w', encoding='utf-8') as f:
               json.dump(data, f)
           PY
           echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
       - name: Terraform Init
-        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}"
+        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=${GOOGLE_APPLICATION_CREDENTIALS}"
       - name: Terraform Apply
         run: terraform apply -input=false -auto-approve -no-color
