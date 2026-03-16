@@ -8,6 +8,12 @@ Nedan visas resultat från PR där lint, security och validate passerar:
 
 ![Terraform PR checks](docs/images/terraform-pr-checks.png)
 
+## VM i GCP Console
+
+Lägg in screenshot på skapad VM i GCP Console här:
+
+![GCP VM Console](docs/images/gcp-vm-console.png)
+
 ## Syfte
 
 Målet med labben är att provisionera en säker grund-VM i GCP med Terraform samt lägga till automatisk backup av boot-disken.
@@ -25,7 +31,7 @@ Målet med labben är att provisionera en säker grund-VM i GCP med Terraform sa
 ## Det som är implementerat
 
 1. Konfigurerat Google-provider (`hashicorp/google`, `~> 5.0`).
-2. Skapat VM (`e2-micro`) i `europe-north1-a` med Ubuntu 22.04 LTS.
+2. Definierat VM (`e2-micro`) i `europe-north1-a` med Ubuntu 22.04 LTS.
 3. Lagt till startup-script för grundläggande serverhårdning.
 4. Märkt resurser med labels/tags för kurs, labb och student.
 5. Skapat daglig snapshot-policy (`03:00`) med 7 dagars retention.
@@ -84,3 +90,23 @@ terraform apply tfplan
 ## Notering
 
 `.terraform.lock.hcl` ska normalt checkas in i Git för reproducerbara provider-versioner.
+
+## Säkerhetsbeslut
+
+- `ufw`: begränsar inkommande trafik (default deny) och tillåter endast SSH.
+- `fail2ban`: minskar risken för brute-force-attacker mot SSH.
+- `unattended-upgrades`: installerar säkerhetsuppdateringar automatiskt.
+- Labels/tags: gör resurser spårbara och enklare att hantera i drift.
+
+## Checklista för Godkänt (Labb 1)
+
+- [x] Terraform-kod för Linux VM i GCP.
+- [x] GitHub repo `lab1-terraform` med commit-historik.
+- [x] GitHub Actions pipeline med lint, security scan, validate.
+- [x] Minst en PR med synlig pipeline-körning (screenshot).
+- [x] Backup-strategi (snapshot policy i Terraform).
+- [~] README med förklaring och screenshots (VM-screenshot läggs in när VM är synlig i Console).
+
+## Känd blocker just nu
+
+`terraform apply` blockeras av IAM-rättigheter i projektet (`compute.instances.create`, `compute.resourcePolicies.create` m.fl.).
