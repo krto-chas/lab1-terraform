@@ -26,7 +26,7 @@ resource "google_compute_instance" "vm" {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
       size  = 20
-      type  = "pd-balanced"
+      type  = "pd-standard"
     }
   }
 
@@ -47,7 +47,7 @@ resource "google_compute_instance" "vm" {
 }
 
 resource "google_compute_resource_policy" "daily_backup" {
-  name   = "${local.student_slug}-daily-backup"
+  name   = "${local.student_slug}-daily-backup-v2"
   region = var.region
 
   snapshot_schedule_policy {
