@@ -2,6 +2,12 @@
 
 DevSecOps Lab 1 med Terraform och Google Cloud Platform (GCP).
 
+## CI-resultat (Pull Request)
+
+Nedan visas resultat från PR där lint, security och validate passerar:
+
+![Terraform PR checks](docs/images/terraform-pr-checks.png)
+
 ## Syfte
 
 Målet med labben är att provisionera en säker grund-VM i GCP med Terraform samt lägga till automatisk backup av boot-disken.
@@ -39,10 +45,40 @@ Målet med labben är att provisionera en säker grund-VM i GCP med Terraform sa
 
 ## Körning
 
+### 1) Initiera Terraform
+
+Laddar ner och låser provider-versioner enligt konfigurationen.
+
 ```bash
 terraform init
+```
+
+### 2) Granska planerade ändringar
+
+Visar exakt vilka resurser som kommer skapas/ändras/tas bort utan att göra ändringar i molnet.
+
+```bash
 terraform plan
+```
+
+Tips: spara planen till fil om du vill applicera exakt samma plan senare.
+
+```bash
+terraform plan -out=tfplan
+```
+
+### 3) Applicera infrastrukturen
+
+Skapar resurserna i GCP enligt planen.
+
+```bash
 terraform apply
+```
+
+Om du har sparat en planfil:
+
+```bash
+terraform apply tfplan
 ```
 
 ## Notering
