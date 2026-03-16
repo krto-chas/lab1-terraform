@@ -4,13 +4,13 @@ DevSecOps Lab 1 med Terraform och Google Cloud Platform (GCP).
 
 ## CI-resultat (Pull Request)
 
-Nedan visas resultat från PR där lint, security och validate passerar:
+Nedan visas en pipeline-körning där alla steg passerar, inklusive `apply`.
 
 ![Terraform PR checks](docs/images/terraform-pr-checks.png)
 
 ## VM i GCP Console
 
-Lägg in screenshot på skapad VM i GCP Console här:
+Nedan visas den skapade VM-instansen i GCP Console.
 
 ![GCP VM Console](docs/images/gcp-vm-console.png)
 
@@ -42,6 +42,7 @@ Målet med labben är att provisionera en säker grund-VM i GCP med Terraform sa
 - `terraform init` körd framgångsrikt.
 - `terraform validate` körd med resultat: konfigurationen är giltig.
 - `terraform plan` körd med resultat: 3 resurser planeras att skapas.
+- `terraform apply` körd via GitHub Actions med Service Account-nyckel (`GCP_SA_KEY`).
 
 ## Planerade resurser (enligt senaste plan)
 
@@ -105,8 +106,4 @@ terraform apply tfplan
 - [x] GitHub Actions pipeline med lint, security scan, validate.
 - [x] Minst en PR med synlig pipeline-körning (screenshot).
 - [x] Backup-strategi (snapshot policy i Terraform).
-- [~] README med förklaring och screenshots (VM-screenshot läggs in när VM är synlig i Console).
-
-## Känd blocker just nu
-
-`terraform apply` blockeras av IAM-rättigheter i projektet (`compute.instances.create`, `compute.resourcePolicies.create` m.fl.).
+- [x] README med förklaring och screenshots.
