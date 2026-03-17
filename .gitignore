@@ -6,3 +6,7 @@ terraform.tfvars
 !example.tfvars
 *.json
 !example*.json
+*.b64
+gcp-sa-key.json
+gcp-sa-key.b64
+sa_test.pem

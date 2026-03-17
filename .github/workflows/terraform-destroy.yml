@@ -1,0 +1,58 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Write 'destroy' to run terraform destroy"
+        required: true
+        default: "no"
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_destroy == 'destroy'
+    env:
+      TF_VAR_project_id: ${{ vars.TF_VAR_project_id }}
+      TF_VAR_region: ${{ vars.TF_VAR_region }}
+      TF_VAR_student_id: ${{ vars.TF_VAR_student_id }}
+      TF_STATE_BUCKET: chas-tf-state-chas-ff
+      TF_STATE_PREFIX: lab1-terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Prepare and activate GCP credentials
+        shell: bash
+        env:
+          RAW_GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          set -e
+          CRED_PATH="${RUNNER_TEMP}/gcp-sa-key.json"
+          python - <<'PY'
+          import base64, json, os
+          raw = os.environ['RAW_GCP_SA_KEY'].strip()
+          if raw.startswith('{'):
+              payload = raw
+          else:
+              payload = base64.b64decode(raw).decode('utf-8')
+          data = json.loads(payload)
+          if 'private_key' in data:
+              data['private_key'] = data['private_key'].replace('\\r\\n', '\\n').replace('\\r', '\\n')
+              data['private_key'] = data['private_key'].replace('\\n', '\n')
+          path = os.environ['RUNNER_TEMP'] + '/gcp-sa-key.json'
+          with open(path, 'w', encoding='utf-8') as f:
+              json.dump(data, f)
+          PY
+          gcloud auth activate-service-account --key-file="${CRED_PATH}"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CRED_PATH}" >> "$GITHUB_ENV"
+      - name: Get backend access token
+        shell: bash
+        run: |
+          set -e
+          echo "TF_BACKEND_ACCESS_TOKEN=$(gcloud auth print-access-token)" >> "$GITHUB_ENV"
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="access_token=${TF_BACKEND_ACCESS_TOKEN}"
+      - name: Terraform Destroy
+        run: terraform destroy -input=false -auto-approve -no-color

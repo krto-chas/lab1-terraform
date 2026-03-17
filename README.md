@@ -4,13 +4,13 @@ DevSecOps Lab 1 med Terraform och Google Cloud Platform (GCP).
 
 ## CI-resultat (Pull Request)
 
-Nedan visas resultat från PR där lint, security och validate passerar:
+Nedan visas en pipeline-körning där alla steg passerar, inklusive `apply`.
 
 ![Terraform PR checks](docs/images/terraform-pr-checks.png)
 
 ## VM i GCP Console
 
-Lägg in screenshot på skapad VM i GCP Console här:
+Nedan visas den skapade VM-instansen i GCP Console.
 
 ![GCP VM Console](docs/images/gcp-vm-console.png)
 
@@ -42,6 +42,17 @@ Målet med labben är att provisionera en säker grund-VM i GCP med Terraform sa
 - `terraform init` körd framgångsrikt.
 - `terraform validate` körd med resultat: konfigurationen är giltig.
 - `terraform plan` körd med resultat: 3 resurser planeras att skapas.
+- `terraform apply` körd via GitHub Actions med Service Account-nyckel (`GCP_SA_KEY`).
+
+## CI/CD-automation
+
+Deploy sker nu automatiskt vid merge/push till `main`:
+
+- `lint` -> `security` -> `validate` -> `plan` -> `apply`
+- Ingen manuell uppladdning/körning krävs vid merge.
+
+Tillfälligt läge: `plan/apply` är pausat direkt i workflow-filen (`if: false`) tills ny giltig SA-nyckel är utställd av lärare/Mission Control.
+När nyckeln är verifierad återaktiveras jobben genom att ändra `if`-villkoren i [.github/workflows/terraform.yml](.github/workflows/terraform.yml).
 
 ## Planerade resurser (enligt senaste plan)
 
@@ -87,16 +98,85 @@ Om du har sparat en planfil:
 terraform apply tfplan
 ```
 
+### Remote state (GCS backend)
+
+Projektet använder `backend "gcs"` i Terraform. Initiera med backend-config:
+
+```bash
+terraform init -backend-config="bucket=<din-tf-state-bucket>" -backend-config="prefix=lab1-terraform"
+```
+
+I GitHub Actions används repository variables:
+
+Workflowen använder som standard:
+
+- `TF_STATE_BUCKET=chas-tf-state-chas-ff`
+- `TF_STATE_PREFIX=lab1-terraform`
+
+
+
 ## Notering
 
 `.terraform.lock.hcl` ska normalt checkas in i Git för reproducerbara provider-versioner.
+
+## GitHub Secrets och Variables
+
+För att alla workflows ska fungera (CI, auto-apply, destroy, CIS-audit) behövs följande på repo-nivå:
+
+### Repository Secrets
+
+- `GCP_SA_KEY` – JSON-nyckel för Service Account med rätt IAM-behörigheter.
+
+### Repository Variables
+
+- `TF_VAR_project_id` – exempel: `chas-devsecops-2026`
+- `TF_VAR_region` – exempel: `europe-north1`
+- `TF_VAR_student_id` – exempel: `kristoffer-toivanen`
+
+### Inbyggda standardvärden i workflows
+
+Följande backend-värden är redan hårdkodade i workflow-filerna:
+
+- `TF_STATE_BUCKET=chas-tf-state-chas-ff`
+- `TF_STATE_PREFIX=lab1-terraform`
 
 ## Säkerhetsbeslut
 
 - `ufw`: begränsar inkommande trafik (default deny) och tillåter endast SSH.
 - `fail2ban`: minskar risken för brute-force-attacker mot SSH.
 - `unattended-upgrades`: installerar säkerhetsuppdateringar automatiskt.
+- `auditd`: aktiverat för bättre spårbarhet/audit.
+- SSH-härdning: root-login avstängt och password authentication avstängd.
 - Labels/tags: gör resurser spårbara och enklare att hantera i drift.
+
+## DR (RPO/RTO)
+
+DR-dokumentation finns i [docs/dr.md](docs/dr.md) med:
+
+- RPO: 24 timmar
+- RTO: 30-60 minuter
+- Runbook för restore från snapshot
+
+## Auto-destroy workflow
+
+Manuell destroy-workflow finns i [.github/workflows/terraform-destroy.yml](.github/workflows/terraform-destroy.yml).
+
+Körning i GitHub Actions:
+
+1. Actions -> `Terraform Destroy`
+2. `Run workflow`
+3. Skriv `destroy` i `confirm_destroy`
+
+## CIS-audit workflow
+
+Manuell CIS-audit finns i [.github/workflows/cis-audit.yml](.github/workflows/cis-audit.yml).
+
+Körning i GitHub Actions:
+
+1. Actions -> `CIS Audit`
+2. `Run workflow`
+3. Ange `vm_name` (exempel: `kristoffer-toivanen-lab1-vm`) och `vm_zone`
+4. Ladda ner artifact `cis-audit-report` (innehåller `lynis-report.dat` och sammanfattning)
 
 ## Checklista för Godkänt (Labb 1)
 
@@ -105,8 +185,12 @@ terraform apply tfplan
 - [x] GitHub Actions pipeline med lint, security scan, validate.
 - [x] Minst en PR med synlig pipeline-körning (screenshot).
 - [x] Backup-strategi (snapshot policy i Terraform).
-- [~] README med förklaring och screenshots (VM-screenshot läggs in när VM är synlig i Console).
+- [x] README med förklaring och screenshots.
 
-## Känd blocker just nu
+## VG-kompletteringar (status)
 
-`terraform apply` blockeras av IAM-rättigheter i projektet (`compute.instances.create`, `compute.resourcePolicies.create` m.fl.).
+- [x] Pipeline blockerar `CRITICAL` (Trivy `exit-code: 1`).
+- [x] DR-dokumentation (RPO/RTO) i [docs/dr.md](docs/dr.md).
+- [x] Remote state via GCS backend.
+- [x] Manuell auto-destroy workflow.
+- [x] CIS-audit workflow + rapport-artifact för verifiering av hardening-score.
