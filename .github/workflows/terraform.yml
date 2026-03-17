@@ -50,30 +50,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Write GCP credentials
+      - name: Get GCP access token via OpenSSL
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
+          set -e
           echo "$GCP_SA_KEY" | base64 -d > /tmp/gcp-creds.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json" >> "$GITHUB_ENV"
-      - name: Debug credentials format
-        run: |
-          python3 - <<'PY'
-          import json
-          with open('/tmp/gcp-creds.json') as f:
-              data = json.load(f)
-          pk = data.get('private_key', '')
-          print('private_key_id:', data.get('private_key_id', 'MISSING'))
-          print('PK length:', len(pk))
-          print('Actual newlines:', pk.count(chr(10)))
-          print('Carriage returns:', pk.count(chr(13)))
-          print('Literal backslash-n:', pk.count(chr(92)+chr(110)))
-          print('Char after BEGIN header:', repr(pk[27:28]))
-          PY
+          python3 -c "import json; open('/tmp/sa.pem','w').write(json.load(open('/tmp/gcp-creds.json'))['private_key'])"
+          CLIENT_EMAIL=$(python3 -c "import json; print(json.load(open('/tmp/gcp-creds.json'))['client_email'])")
+
+          NOW=$(date +%s)
+          EXP=$((NOW + 3600))
+          HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
+          PAYLOAD=$(printf '{"iss":"%s","sub":"%s","aud":"https://oauth2.googleapis.com/token","scope":"https://www.googleapis.com/auth/cloud-platform","iat":%d,"exp":%d}' \
+            "$CLIENT_EMAIL" "$CLIENT_EMAIL" $NOW $EXP | base64 -w0 | tr '+/' '-_' | tr -d '=')
+          UNSIGNED="${HEADER}.${PAYLOAD}"
+
+          SIG=$(printf '%s' "$UNSIGNED" | openssl dgst -sha256 -sign /tmp/sa.pem | base64 -w0 | tr '+/' '-_' | tr -d '=')
+          JWT="${UNSIGNED}.${SIG}"
+
+          TOKEN=$(curl -sf -X POST https://oauth2.googleapis.com/token \
+            -d "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${JWT}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+          echo "GCP_ACCESS_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
       - name: Terraform Init
-        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=/tmp/gcp-creds.json"
+        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="access_token=${GCP_ACCESS_TOKEN}"
       - name: Terraform Plan
-        run: terraform plan -input=false -no-color
+        run: GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform plan -input=false -no-color
 
   apply:
     runs-on: ubuntu-latest
@@ -87,13 +91,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - name: Write GCP credentials
+      - name: Get GCP access token via OpenSSL
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
+          set -e
           echo "$GCP_SA_KEY" | base64 -d > /tmp/gcp-creds.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json" >> "$GITHUB_ENV"
+          python3 -c "import json; open('/tmp/sa.pem','w').write(json.load(open('/tmp/gcp-creds.json'))['private_key'])"
+          CLIENT_EMAIL=$(python3 -c "import json; print(json.load(open('/tmp/gcp-creds.json'))['client_email'])")
+
+          NOW=$(date +%s)
+          EXP=$((NOW + 3600))
+          HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
+          PAYLOAD=$(printf '{"iss":"%s","sub":"%s","aud":"https://oauth2.googleapis.com/token","scope":"https://www.googleapis.com/auth/cloud-platform","iat":%d,"exp":%d}' \
+            "$CLIENT_EMAIL" "$CLIENT_EMAIL" $NOW $EXP | base64 -w0 | tr '+/' '-_' | tr -d '=')
+          UNSIGNED="${HEADER}.${PAYLOAD}"
+
+          SIG=$(printf '%s' "$UNSIGNED" | openssl dgst -sha256 -sign /tmp/sa.pem | base64 -w0 | tr '+/' '-_' | tr -d '=')
+          JWT="${UNSIGNED}.${SIG}"
+
+          TOKEN=$(curl -sf -X POST https://oauth2.googleapis.com/token \
+            -d "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${JWT}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+          echo "GCP_ACCESS_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
       - name: Terraform Init
-        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=/tmp/gcp-creds.json"
+        run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="access_token=${GCP_ACCESS_TOKEN}"
       - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve -no-color
+        run: GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform apply -input=false -auto-approve -no-color
