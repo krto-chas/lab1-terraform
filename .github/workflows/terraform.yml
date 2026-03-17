@@ -119,8 +119,8 @@ jobs:
         run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="access_token=${GCP_ACCESS_TOKEN}"
       - name: Import existing resources
         run: |
-          GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform import google_compute_instance.vm projects/${TF_VAR_project_id}/zones/europe-north1-a/instances/${TF_VAR_student_id}-lab1-vm 2>&1 || true
+          GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform import google_compute_instance.vm projects/${TF_VAR_project_id}/zones/europe-north1-b/instances/${TF_VAR_student_id}-lab1-vm 2>&1 || true
           GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform import google_compute_resource_policy.daily_backup projects/${TF_VAR_project_id}/regions/europe-north1/resourcePolicies/${TF_VAR_student_id}-daily-backup-v2 2>&1 || true
-          GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform import google_compute_disk_resource_policy_attachment.backup_attachment ${TF_VAR_project_id}/europe-north1-a/${TF_VAR_student_id}-lab1-vm/${TF_VAR_student_id}-daily-backup-v2 2>&1 || true
+          GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform import google_compute_disk_resource_policy_attachment.backup_attachment ${TF_VAR_project_id}/europe-north1-b/${TF_VAR_student_id}-lab1-vm/${TF_VAR_student_id}-daily-backup-v2 2>&1 || true
       - name: Terraform Apply
         run: GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform apply -input=false -auto-approve -no-color
