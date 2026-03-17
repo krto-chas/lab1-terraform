@@ -22,7 +22,7 @@ locals {
 resource "google_compute_instance" "vm" {
   name         = "${local.student_slug}-lab1-vm"
   machine_type = "e2-micro"
-  zone         = "${var.region}-c"
+  zone         = "${var.region}-b"
 
   boot_disk {
     initialize_params {
@@ -69,5 +69,5 @@ resource "google_compute_resource_policy" "daily_backup" {
 resource "google_compute_disk_resource_policy_attachment" "backup_attachment" {
   name = google_compute_resource_policy.daily_backup.name
   disk = google_compute_instance.vm.name
-  zone = "${var.region}-c"
+  zone = "${var.region}-b"
 }

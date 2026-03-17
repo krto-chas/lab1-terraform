@@ -121,5 +121,6 @@ jobs:
         run: |
           GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform state rm google_compute_disk_resource_policy_attachment.backup_attachment 2>&1 || true
           GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform state rm google_compute_instance.vm 2>&1 || true
+          GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform state rm google_compute_resource_policy.daily_backup 2>&1 || true
       - name: Terraform Apply
         run: GOOGLE_OAUTH_ACCESS_TOKEN="$GCP_ACCESS_TOKEN" terraform apply -input=false -auto-approve -no-color
