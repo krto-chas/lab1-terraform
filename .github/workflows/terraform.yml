@@ -54,32 +54,7 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
-          set -e
-          python3 - <<'PY'
-          import os, base64
-          raw = os.environ['GCP_SA_KEY'].strip()
-          if not raw.startswith('{'):
-              raw = base64.b64decode(raw).decode('utf-8')
-          with open('/tmp/gcp-creds.json', 'w') as f:
-              f.write(raw)
-          PY
-          python3 - <<'PY'
-          import json
-          with open('/tmp/gcp-creds.json') as f:
-              data = json.load(f)
-          with open('/tmp/key.pem', 'w') as f:
-              f.write(data['private_key'])
-          PY
-          openssl pkey -in /tmp/key.pem -out /tmp/key-clean.pem
-          python3 - <<'PY'
-          import json
-          with open('/tmp/gcp-creds.json') as f:
-              data = json.load(f)
-          with open('/tmp/key-clean.pem') as f:
-              data['private_key'] = f.read()
-          with open('/tmp/gcp-creds.json', 'w') as f:
-              json.dump(data, f)
-          PY
+          echo "$GCP_SA_KEY" | base64 -d > /tmp/gcp-creds.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json" >> "$GITHUB_ENV"
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=/tmp/gcp-creds.json"
@@ -102,32 +77,7 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
-          set -e
-          python3 - <<'PY'
-          import os, base64
-          raw = os.environ['GCP_SA_KEY'].strip()
-          if not raw.startswith('{'):
-              raw = base64.b64decode(raw).decode('utf-8')
-          with open('/tmp/gcp-creds.json', 'w') as f:
-              f.write(raw)
-          PY
-          python3 - <<'PY'
-          import json
-          with open('/tmp/gcp-creds.json') as f:
-              data = json.load(f)
-          with open('/tmp/key.pem', 'w') as f:
-              f.write(data['private_key'])
-          PY
-          openssl pkey -in /tmp/key.pem -out /tmp/key-clean.pem
-          python3 - <<'PY'
-          import json
-          with open('/tmp/gcp-creds.json') as f:
-              data = json.load(f)
-          with open('/tmp/key-clean.pem') as f:
-              data['private_key'] = f.read()
-          with open('/tmp/gcp-creds.json', 'w') as f:
-              json.dump(data, f)
-          PY
+          echo "$GCP_SA_KEY" | base64 -d > /tmp/gcp-creds.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json" >> "$GITHUB_ENV"
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=/tmp/gcp-creds.json"
