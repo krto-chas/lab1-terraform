@@ -56,6 +56,20 @@ jobs:
         run: |
           echo "$GCP_SA_KEY" | base64 -d > /tmp/gcp-creds.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json" >> "$GITHUB_ENV"
+      - name: Debug credentials format
+        run: |
+          python3 - <<'PY'
+          import json
+          with open('/tmp/gcp-creds.json') as f:
+              data = json.load(f)
+          pk = data.get('private_key', '')
+          print('private_key_id:', data.get('private_key_id', 'MISSING'))
+          print('PK length:', len(pk))
+          print('Actual newlines:', pk.count(chr(10)))
+          print('Carriage returns:', pk.count(chr(13)))
+          print('Literal backslash-n:', pk.count(chr(92)+chr(110)))
+          print('Char after BEGIN header:', repr(pk[27:28]))
+          PY
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="prefix=${TF_STATE_PREFIX}" -backend-config="credentials=/tmp/gcp-creds.json"
       - name: Terraform Plan
